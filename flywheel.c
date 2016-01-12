@@ -77,7 +77,10 @@ void updateVelocity() {
 
 	/* calculate and constrain drive */
 	current_error = target_velocity - motor_velocity;
-	drive = drive + (current_error * gain);
+	if (abs(current_error * gain) < 0.3)
+		drive += current_error * gain;
+	else
+		drive += 0.3 * sgn(current_error * gain);
 	if (drive > 1) drive = 1;
 	if (drive < 0) drive = 0;
 
