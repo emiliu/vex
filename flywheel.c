@@ -4,7 +4,6 @@
 #define TBH_LOOP_SPEED 30 /* change this as necessary */
 
 #define GAIN_NORMAL 0.001; /* TODO changing speeds */
-#define GAIN_HIGHER 0.035; /* TODO when shooting */
 
 long enc, enc_prev;
 
@@ -13,7 +12,7 @@ long time;
 
 long target_velocity;
 float current_error, last_error;
-float gain; /* integration coefficient constant */
+float gain, gain_higher; /* integration coefficient constant */
 float drive, drive_prev; /* float between 0 and 1, indicating percent of full power */
 long first_cross;
 float drive_approx;
@@ -34,15 +33,19 @@ long getEncoderCount() {
 	return(nMotorEncoder[lt]);
 }
 
-void setVelocity(int velocity, float predicted_drive) {
+void setVelocity(int velocity, float predicted_drive, float gain_changing, float gain_steady) {
 	/* update/reset stuff */
+	// gain_changing = gain while velocity is changing
+	// gain_steady = gain while velocity should be constant
+	// if gain parameter values are nonpositive they will default to GAIN_NORMAL
 	target_velocity = velocity;
 	current_error = target_velocity - motor_velocity;
 	last_error = current_error;
 	drive_approx = predicted_drive;
 	first_cross = 1;
 	drive_prev = 0;
-	gain = GAIN_NORMAL;
+	gain = (gain_changing > 0) ? gain_changing : GAIN_NORMAL;
+	gain_higher = (gain_steady > 0) ? gain_higher : GAIN_NORMAL;
 }
 
 void calculateVelocity() {
@@ -71,7 +74,7 @@ void updateVelocity() {
 		if (first_cross) {
 			drive = drive_approx;
 			first_cross = 0;
-			if (target_velocity) gain = GAIN_HIGHER;
+			if (target_velocity) gain = gain_higher;
 		} else {
 			/* the tbh part ! */
 			drive = 0.5 * (drive + drive_prev);
@@ -98,5 +101,5 @@ task main() {
 	/* TODO add button stuff here */
 
 	/* TODO random test case */
-	setVelocity(120, 0.3);
+	setVelocity(120, 0.3, 0, 0.035);
 }
