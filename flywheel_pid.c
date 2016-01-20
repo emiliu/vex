@@ -34,6 +34,10 @@ long getEncoderCount() {
 
 void setVelocity(int velocity, float predicted_drive, float P_gain, float I_gain, float D_gain) {
 	/* update/reset stuff */
+	// P_gain, I_gain, and D_gain correspond with PID constants
+	// setting any of them to 0 means disabling that particular component of PID
+	// i.e. if D_gain = 0 the program will run as a PI controller
+	// if all three are 0 program will set kP = 0.001; power changes will be similar to TBH with gain 0.001
 	target_velocity = velocity;
 	current_error = target_velocity - motor_velocity;
 	last_error = current_error;
@@ -45,11 +49,13 @@ void setVelocity(int velocity, float predicted_drive, float P_gain, float I_gain
 	kP = P_gain;
 	kI = I_gain;
 	kD = D_gain;
-	if (!(P_gain||I_gain||D_gain)) P_gain = 0.001;
+	if (!(P_gain||I_gain||D_gain)) kP = 0.001;
 }
 
 void updateVelocity() {
+	/* PID and other power control calculations */
 
+	// calculate current velocity
 	int d_time, d_enc;
 	enc = getEncoderCount();
 	d_time = nSysTime - time;
@@ -58,18 +64,23 @@ void updateVelocity() {
 	enc_prev = enc;
 	motor_velocity = (1000.0 / d_time) * d_enc * 60.0 / COUNTS_PER_REV;
 
+	// PID values
 	current_error = target_velocity - motor_velocity;
 	integral += current_error * d_time;
 	derivative = (current_error - last_error) / d_time;
 
+	// PID multipliers
 	drive += kP * current_error + kI * integral + kD * derivative;
 	if (drive > 1) drive = 1;
 	if (drive < 0) drive = 0;
 
+	// before and when crossing setpoint
 	if (first_cross) {
 		if (current_error > 0)
+			// bang-bang control for optimal speedup
 			drive = 1;
-		else if (sgn(current_error) != sgn(last_error)) {
+		if (sgn(current_error) != sgn(last_error)) {
+			// reset to PID loop and clear integral
 			drive = drive_approx;
 			first_cross = 0;
 			integral = 0;
