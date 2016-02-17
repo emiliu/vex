@@ -5,6 +5,8 @@
 
 #define GAIN_NORMAL 0.001; /* TODO changing speeds */
 
+#define SHOT_GAIN 0.05; /* change as necessary */
+
 long enc, enc_prev;
 
 float motor_velocity;
@@ -89,6 +91,8 @@ task tbhControl() {
 	while (1) {
 		calculateVelocity();
 		updateVelocity();
+		if (SensorValue[limit]) motor_drive *= (1 + SHOT_GAIN);
+		if (drive > 1) drive = 1;
 		motor_drive = (drive * 127) + 0.5;
 		setPower(motor_drive);
 		wait1Msec(TBH_LOOP_SPEED);
